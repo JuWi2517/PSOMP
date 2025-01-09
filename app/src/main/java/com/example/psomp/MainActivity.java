@@ -14,48 +14,49 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.ArrayList;
 import java.util.List;
-import com.example.psomp.room.PubDatabase;
-import com.example.psomp.room.PubEntity;
-import com.example.psomp.room.PubDao;
 
 public class MainActivity extends AppCompatActivity implements PubAdapter.OnPubClickListener {
 
     private List<String> pubList;
     private PubAdapter pubAdapter;
     private RecyclerView pubRecyclerView;
-    private PubDao pubDao; // Move pubDao to a class-level variable
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize the Room database and DAO
-        PubDatabase database = PubDatabase.getInstance(this);
-        pubDao = database.pubDao(); // Initialize pubDao
-
         pubList = new ArrayList<>();
 
-        // Load pubs from the database
-        new Thread(() -> {
-            List<PubEntity> pubs = pubDao.getAllPubs();
-            for (PubEntity pub : pubs) {
-                pubList.add(pub.getName());
-            }
-            runOnUiThread(() -> pubAdapter.notifyDataSetChanged());
-        }).start();
+        // Initialize the adapter
+        pubAdapter = new PubAdapter(pubList, this);
 
         // Initialize the RecyclerView
         pubRecyclerView = findViewById(R.id.pubRecyclerView);
         pubRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-        // Initialize the adapter and set it to the RecyclerView
-        pubAdapter = new PubAdapter(pubList, this);
         pubRecyclerView.setAdapter(pubAdapter);
+
+        // Load pubs from the JSON file
+        loadPubsFromJson();
 
         // Handle adding new pubs
         FloatingActionButton addPubButton = findViewById(R.id.addPubButton);
         addPubButton.setOnClickListener(v -> showAddPubDialog());
+    }
+
+    private void loadPubsFromJson() {
+        String json = FileUtil.readFromFile(this, "pubs.json");
+        List<PubWithItems> pubWithItemsList = new ArrayList<>();
+        if (json != null && !json.isEmpty()) {
+            List<PubWithItems> parsedList = JsonUtil.fromJson(json);
+            if (parsedList != null) {
+                pubWithItemsList = parsedList;
+            }
+        }
+        for (PubWithItems pubWithItems : pubWithItemsList) {
+            pubList.add(pubWithItems.getPub().getName());
+        }
+        pubAdapter.notifyDataSetChanged();
     }
 
     private void showAddPubDialog() {
@@ -71,8 +72,8 @@ public class MainActivity extends AppCompatActivity implements PubAdapter.OnPubC
                 pubList.add(pubName);
                 pubAdapter.notifyItemInserted(pubList.size() - 1);
 
-                // Save the pub to the database
-                new Thread(() -> pubDao.insertPub(new PubEntity(pubName))).start();
+                // Save the pub to the JSON file
+                addPubToJson(pubName);
             }
         });
         builder.setNegativeButton("Zrušit", (dialog, which) -> dialog.cancel());
@@ -80,9 +81,34 @@ public class MainActivity extends AppCompatActivity implements PubAdapter.OnPubC
         builder.show();
     }
 
+    private void addPubToJson(String pubName) {
+        String json = FileUtil.readFromFile(this, "pubs.json");
+        List<PubWithItems> pubWithItemsList = new ArrayList<>();
+        if (json != null && !json.isEmpty()) {
+            List<PubWithItems> parsedList = JsonUtil.fromJson(json);
+            if (parsedList != null) {
+                pubWithItemsList = parsedList;
+            }
+        }
+
+        PubEntity newPub = new PubEntity();
+        newPub.setId(pubWithItemsList.size() + 1); // Assign a new ID
+        newPub.setName(pubName);
+
+        PubWithItems newPubWithItems = new PubWithItems();
+        newPubWithItems.setPub(newPub);
+        newPubWithItems.setItems(new ArrayList<>());
+
+        pubWithItemsList.add(newPubWithItems);
+
+        String updatedJson = JsonUtil.toJson(pubWithItemsList);
+        FileUtil.saveToFile(this, "pubs.json", updatedJson);
+    }
+
     @Override
     public void onPubClick(int position) {
         Intent intent = new Intent(this, PubDetailActivity.class);
+        intent.putExtra("PUB_ID", position + 1); // Pass the pub ID
         intent.putExtra("PUB_NAME", pubList.get(position));
         startActivity(intent);
     }

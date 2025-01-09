@@ -21,7 +21,7 @@ public class Pub {
     }
 
     public void addItem(Item item) {
-        this.items.add(item);
+        items.add(item);
     }
 
     public double getTotalBill() {

@@ -1,17 +1,13 @@
-package com.example.psomp.room;
+package com.example.psomp;
 
-import androidx.room.Embedded;
-import androidx.room.Relation;
+import com.google.gson.annotations.SerializedName;
 import java.util.List;
 
 public class PubWithItems {
-    @Embedded
+    @SerializedName("pub")
     private PubEntity pub;
 
-    @Relation(
-            parentColumn = "id",
-            entityColumn = "pubId"
-    )
+    @SerializedName("items")
     private List<ItemEntity> items;
 
     public PubEntity getPub() {

@@ -11,18 +11,18 @@ import java.util.List;
 
 public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder> {
 
-    private final List<Item> itemList;
-    private final Runnable updateTotalPriceCallback;
+    private List<Item> itemList;
+    private OnQuantityChangeListener onQuantityChangeListener;
 
-    public ItemAdapter(List<Item> itemList, Runnable updateTotalPriceCallback) {
+    public ItemAdapter(List<Item> itemList, OnQuantityChangeListener onQuantityChangeListener) {
         this.itemList = itemList;
-        this.updateTotalPriceCallback = updateTotalPriceCallback;
+        this.onQuantityChangeListener = onQuantityChangeListener;
     }
 
     @NonNull
     @Override
     public ItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_row, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_view, parent, false);
         return new ItemViewHolder(view);
     }
 
@@ -30,20 +30,20 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder
     public void onBindViewHolder(@NonNull ItemViewHolder holder, int position) {
         Item item = itemList.get(position);
         holder.itemNameTextView.setText(item.getName());
-        holder.itemPriceTextView.setText(item.getPrice() + " Kč");
-        holder.quantityTextView.setText(String.valueOf(item.getQuantity()));
+        holder.itemPriceTextView.setText(String.format("%.2f Kč", item.getPrice()));
+        holder.itemQuantityTextView.setText(String.valueOf(item.getQuantity()));
 
         holder.plusButton.setOnClickListener(v -> {
-            item.incrementQuantity();
-            notifyItemChanged(position);
-            updateTotalPriceCallback.run();
+            item.setQuantity(item.getQuantity() + 1);
+            holder.itemQuantityTextView.setText(String.valueOf(item.getQuantity()));
+            onQuantityChangeListener.onQuantityChange();
         });
 
         holder.minusButton.setOnClickListener(v -> {
-            if (item.getQuantity() > 0) {
-                item.decrementQuantity();
-                notifyItemChanged(position);
-                updateTotalPriceCallback.run();
+            if (item.getQuantity() > 1) {
+                item.setQuantity(item.getQuantity() - 1);
+                holder.itemQuantityTextView.setText(String.valueOf(item.getQuantity()));
+                onQuantityChangeListener.onQuantityChange();
             }
         });
     }
@@ -54,16 +54,23 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder
     }
 
     public static class ItemViewHolder extends RecyclerView.ViewHolder {
-        TextView itemNameTextView, itemPriceTextView, quantityTextView;
-        Button plusButton, minusButton;
+        TextView itemNameTextView;
+        TextView itemPriceTextView;
+        TextView itemQuantityTextView;
+        Button plusButton;
+        Button minusButton;
 
         public ItemViewHolder(@NonNull View itemView) {
             super(itemView);
             itemNameTextView = itemView.findViewById(R.id.itemNameTextView);
             itemPriceTextView = itemView.findViewById(R.id.itemPriceTextView);
-            quantityTextView = itemView.findViewById(R.id.quantityTextView);
+            itemQuantityTextView = itemView.findViewById(R.id.itemQuantityTextView);
             plusButton = itemView.findViewById(R.id.plusButton);
             minusButton = itemView.findViewById(R.id.minusButton);
         }
+    }
+
+    public interface OnQuantityChangeListener {
+        void onQuantityChange();
     }
 }

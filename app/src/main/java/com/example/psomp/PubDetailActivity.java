@@ -8,34 +8,25 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.example.psomp.room.ItemEntity;
-import com.example.psomp.room.PubDatabase;
-import com.example.psomp.room.PubDao;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PubDetailActivity extends AppCompatActivity {
+public class PubDetailActivity extends AppCompatActivity implements ItemAdapter.OnQuantityChangeListener {
 
     private List<Item> itemList;
     private ItemAdapter itemAdapter;
     private TextView totalPriceTextView;
     private double totalPrice = 0.0;
-    private PubDao pubDao;
     private int pubId;
+    private Pub pub;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pub_detail);
 
-        // Initialize the database and DAO
-        PubDatabase db = PubDatabase.getInstance(this);
-        pubDao = db.pubDao();
-
-        // Get the pubId from the intent or savedInstanceState
         pubId = getIntent().getIntExtra("PUB_ID", -1);
-
         String pubName = getIntent().getStringExtra("PUB_NAME");
         TextView pubNameTextView = findViewById(R.id.pubNameTextView);
         pubNameTextView.setText(pubName);
@@ -44,7 +35,7 @@ public class PubDetailActivity extends AppCompatActivity {
         RecyclerView itemRecyclerView = findViewById(R.id.itemRecyclerView);
         itemRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        itemAdapter = new ItemAdapter(itemList, this::updateTotalPrice);
+        itemAdapter = new ItemAdapter(itemList, this);
         itemRecyclerView.setAdapter(itemAdapter);
 
         totalPriceTextView = findViewById(R.id.totalPriceTextView);
@@ -53,21 +44,23 @@ public class PubDetailActivity extends AppCompatActivity {
         FloatingActionButton addItemButton = findViewById(R.id.addItemButton);
         addItemButton.setOnClickListener(v -> showAddItemDialog());
 
-        // Load items from the database
-        loadItemsFromDatabase();
+        loadItemsFromJson();
     }
 
-    private void loadItemsFromDatabase() {
-        new Thread(() -> {
-            List<ItemEntity> items = pubDao.getItemsByPubId(pubId);
-            runOnUiThread(() -> {
-                for (ItemEntity itemEntity : items) {
+    private void loadItemsFromJson() {
+        String json = FileUtil.readFromFile(this, "pubs.json");
+        List<PubWithItems> pubList = JsonUtil.fromJson(json);
+        for (PubWithItems pubWithItems : pubList) {
+            if (pubWithItems.getPub().getId() == pubId) {
+                pub = new Pub(pubWithItems.getPub().getName());
+                for (ItemEntity itemEntity : pubWithItems.getItems()) {
                     itemList.add(new Item(itemEntity.getName(), itemEntity.getPrice(), itemEntity.getQuantity()));
                 }
-                itemAdapter.notifyDataSetChanged();
-                updateTotalPrice();
-            });
-        }).start();
+                break;
+            }
+        }
+        itemAdapter.notifyDataSetChanged();
+        updateTotalPrice();
     }
 
     private void showAddItemDialog() {
@@ -77,19 +70,16 @@ public class PubDetailActivity extends AppCompatActivity {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_item, null);
         EditText itemNameInput = dialogView.findViewById(R.id.itemNameInput);
         EditText itemPriceInput = dialogView.findViewById(R.id.itemPriceInput);
-        EditText itemQuantityInput = dialogView.findViewById(R.id.itemQuantityInput); // Add this input
 
         builder.setView(dialogView);
         builder.setPositiveButton("OK", (dialog, which) -> {
             String itemName = itemNameInput.getText().toString().trim();
             String itemPriceStr = itemPriceInput.getText().toString().trim();
-            String itemQuantityStr = itemQuantityInput.getText().toString().trim(); // Get quantity
 
-            if (!itemName.isEmpty() && !itemPriceStr.isEmpty() && !itemQuantityStr.isEmpty()) {
+            if (!itemName.isEmpty() && !itemPriceStr.isEmpty()) {
                 double itemPrice = Double.parseDouble(itemPriceStr);
-                int itemQuantity = Integer.parseInt(itemQuantityStr); // Parse quantity
-                addItemToPub(pubId, itemName, itemPrice, itemQuantity);
-                itemList.add(new Item(itemName, itemPrice, itemQuantity));
+                addItemToPub(itemName, itemPrice);
+                itemList.add(new Item(itemName, itemPrice));
                 itemAdapter.notifyItemInserted(itemList.size() - 1);
                 updateTotalPrice();
             }
@@ -99,9 +89,33 @@ public class PubDetailActivity extends AppCompatActivity {
         builder.show();
     }
 
-    private void addItemToPub(int pubId, String name, double price, int quantity) {
-        ItemEntity newItem = new ItemEntity(pubId, name, "", price, quantity);
-        new Thread(() -> pubDao.insertItem(newItem)).start();
+    private void addItemToPub(String name, double price) {
+        Item newItem = new Item(name, price, 1);
+        pub.addItem(newItem);
+        itemList.add(newItem); // Add to itemList
+        saveItemsToJson();
+        itemAdapter.notifyItemInserted(itemList.size() - 1); // Notify adapter
+        updateTotalPrice(); // Update total price
+    }
+
+    private void saveItemsToJson() {
+        String json = FileUtil.readFromFile(this, "pubs.json");
+        List<PubWithItems> pubList = JsonUtil.fromJson(json);
+        for (PubWithItems pubWithItems : pubList) {
+            if (pubWithItems.getPub().getId() == pubId) {
+                pubWithItems.getItems().clear();
+                for (Item item : itemList) {
+                    ItemEntity itemEntity = new ItemEntity();
+                    itemEntity.setName(item.getName());
+                    itemEntity.setPrice(item.getPrice());
+                    itemEntity.setQuantity(item.getQuantity());
+                    pubWithItems.getItems().add(itemEntity);
+                }
+                break;
+            }
+        }
+        String updatedJson = JsonUtil.toJson(pubList);
+        FileUtil.saveToFile(this, "pubs.json", updatedJson);
     }
 
     private void updateTotalPrice() {
@@ -110,5 +124,10 @@ public class PubDetailActivity extends AppCompatActivity {
             totalPrice += item.getQuantity() * item.getPrice();
         }
         totalPriceTextView.setText("Celková cena: " + String.format("%.2f Kč", totalPrice));
+    }
+
+    @Override
+    public void onQuantityChange() {
+        updateTotalPrice();
     }
 }

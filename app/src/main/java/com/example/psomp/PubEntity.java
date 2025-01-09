@@ -1,18 +1,15 @@
+package com.example.psomp;
 
-package com.example.psomp.room;
+import com.google.gson.annotations.SerializedName;
 
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
-
-@Entity(tableName = "pubs")
 public class PubEntity {
-    @PrimaryKey(autoGenerate = true)
+    @SerializedName("id")
     private int id;
+
+    @SerializedName("name")
     private String name;
 
-    public PubEntity(String name) {
-        this.name = name;
-    }
+    // Add other fields as needed
 
     public int getId() {
         return id;
@@ -29,4 +26,6 @@ public class PubEntity {
     public void setName(String name) {
         this.name = name;
     }
+
+    // Add getters and setters for other fields
 }
