@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="colorPrimary">#121212</color> <!-- Dark background -->
+    <color name="colorPrimaryDark">#000000</color> <!-- Even darker background -->
+    <color name="colorAccent">#BB86FC</color> <!-- Accent color (purple) -->
+    <color name="textPrimary">#FFFFFF</color> <!-- Primary text color -->
+    <color name="textSecondary">#B3B3B3</color> <!-- Secondary text color -->
+    <color name="dividerColor">#373737</color> <!-- Divider color -->
 </resources>
+

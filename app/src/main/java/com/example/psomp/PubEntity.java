@@ -9,6 +9,8 @@ public class PubEntity {
     @SerializedName("name")
     private String name;
 
+    private int quantity;
+
     // Add other fields as needed
 
     public int getId() {
@@ -27,5 +29,11 @@ public class PubEntity {
         this.name = name;
     }
 
-    // Add getters and setters for other fields
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
 }

@@ -40,7 +40,7 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder
         });
 
         holder.minusButton.setOnClickListener(v -> {
-            if (item.getQuantity() > 1) {
+            if (item.getQuantity() > 0) {
                 item.setQuantity(item.getQuantity() - 1);
                 holder.itemQuantityTextView.setText(String.valueOf(item.getQuantity()));
                 onQuantityChangeListener.onQuantityChange();

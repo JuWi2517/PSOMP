@@ -1,5 +1,6 @@
-package com.example.psomp;// PubAdapter.java
-import android.content.Context;
+// PubAdapter.java
+package com.example.psomp;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,14 +11,14 @@ import java.util.List;
 
 public class PubAdapter extends RecyclerView.Adapter<PubAdapter.PubViewHolder> {
 
-    private final List<String> pubList;
+    private final List<PubWithItems> pubList;
     private final OnPubClickListener clickListener;
 
     public interface OnPubClickListener {
-        void onPubClick(int position);
+        void onPubClick(String pubName);
     }
 
-    public PubAdapter(List<String> pubList, OnPubClickListener clickListener) {
+    public PubAdapter(List<PubWithItems> pubList, OnPubClickListener clickListener) {
         this.pubList = pubList;
         this.clickListener = clickListener;
     }
@@ -25,13 +26,13 @@ public class PubAdapter extends RecyclerView.Adapter<PubAdapter.PubViewHolder> {
     @NonNull
     @Override
     public PubViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_1, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_pub, parent, false);
         return new PubViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull PubViewHolder holder, int position) {
-        holder.bind(pubList.get(position), position);
+        holder.bind(pubList.get(position));
     }
 
     @Override
@@ -44,12 +45,12 @@ public class PubAdapter extends RecyclerView.Adapter<PubAdapter.PubViewHolder> {
 
         public PubViewHolder(@NonNull View itemView) {
             super(itemView);
-            pubName = itemView.findViewById(android.R.id.text1);
+            pubName = itemView.findViewById(R.id.pubName);
         }
 
-        public void bind(String name, int position) {
-            pubName.setText(name);
-            itemView.setOnClickListener(v -> clickListener.onPubClick(position));
+        public void bind(PubWithItems pubWithItems) {
+            pubName.setText(pubWithItems.getPub().getName());
+            itemView.setOnClickListener(v -> clickListener.onPubClick(pubWithItems.getPub().getName()));
         }
     }
 }

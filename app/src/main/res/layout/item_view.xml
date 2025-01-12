@@ -1,41 +1,64 @@
-<!-- res/layout/item_view.xml -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_margin="4dp"
+    android:background="@drawable/item_background_dark"
+    android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="8dp">
+    android:padding="12dp">
 
+    <!-- Item Name -->
     <TextView
         android:id="@+id/itemNameTextView"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center|start"
+        android:text="Item Name"
+        android:textColor="@color/textPrimary"
+        android:textSize="16sp"
+        android:textStyle="bold"  android:layout_width="1dp"/>
+
+    <!-- Item Price -->
+    <TextView
+        android:id="@+id/itemPriceTextView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="Item Name" />
+        android:gravity="center"
+        android:text="0.00 Kč"
+        android:textColor="@color/textSecondary"
+        android:textSize="14sp" />
 
-    <TextView
-        android:id="@+id/itemPriceTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:text="0.00 Kč" />
-
+    <!-- Minus Button -->
     <Button
         android:id="@+id/minusButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="-" />
+        android:layout_width="60dp"
+        android:layout_height="40dp"
+        android:backgroundTint="@color/colorAccent"
+        android:text="-"
+        android:textAlignment="gravity"
+        android:textColor="@color/textPrimary"
+        android:textSize="18sp" />
 
+    <!-- Quantity Text -->
     <TextView
         android:id="@+id/itemQuantityTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:text="1" />
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/quantity_background"
+        android:gravity="center"
+        android:text="1"
+        android:textColor="@color/textPrimary"
+        android:textSize="16sp" />
 
+    <!-- Plus Button -->
     <Button
         android:id="@+id/plusButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="+" />
+        android:layout_width="60dp"
+        android:layout_height="40dp"
+        android:backgroundTint="@color/colorAccent"
+        android:text="+"
+        android:textColor="@color/textPrimary"
+        android:textSize="14sp" />
 </LinearLayout>
+

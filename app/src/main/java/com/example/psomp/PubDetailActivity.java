@@ -1,11 +1,14 @@
 package com.example.psomp;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -14,9 +17,12 @@ import java.util.List;
 
 public class PubDetailActivity extends AppCompatActivity implements ItemAdapter.OnQuantityChangeListener {
 
+    private static final String TAG = "PubDetailActivity";
     private List<Item> itemList;
+    private RecyclerView itemContainer;
     private ItemAdapter itemAdapter;
     private TextView totalPriceTextView;
+    private ImageView trashCanIcon;
     private double totalPrice = 0.0;
     private int pubId;
     private Pub pub;
@@ -31,35 +37,79 @@ public class PubDetailActivity extends AppCompatActivity implements ItemAdapter.
         TextView pubNameTextView = findViewById(R.id.pubNameTextView);
         pubNameTextView.setText(pubName);
 
-        itemList = new ArrayList<>();
-        RecyclerView itemRecyclerView = findViewById(R.id.itemRecyclerView);
-        itemRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        pub = new Pub(pubName); // Initialize the pub object
 
+        itemList = new ArrayList<>();
+        itemContainer = findViewById(R.id.itemContainer);
+        itemContainer.setLayoutManager(new LinearLayoutManager(this));
         itemAdapter = new ItemAdapter(itemList, this);
-        itemRecyclerView.setAdapter(itemAdapter);
+        itemContainer.setAdapter(itemAdapter);
 
         totalPriceTextView = findViewById(R.id.totalPriceTextView);
+
         updateTotalPrice();
 
         FloatingActionButton addItemButton = findViewById(R.id.addItemButton);
         addItemButton.setOnClickListener(v -> showAddItemDialog());
 
+        FloatingActionButton clearItemsButton = findViewById(R.id.clearItemsButton);
+        clearItemsButton.setOnClickListener(v -> clearItemList());
+
+        FloatingActionButton resetQuantitiesButton = findViewById(R.id.resetQuantitiesButton);
+        resetQuantitiesButton.setOnClickListener(v -> resetItemQuantities());
+
         loadItemsFromJson();
+
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
+                1, ItemTouchHelper.RIGHT) {
+
+            @Override
+            public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+                if (direction == ItemTouchHelper.RIGHT) {
+                    int position = viewHolder.getAdapterPosition();
+                    itemList.remove(position);
+                    itemAdapter.notifyItemRemoved(position);
+                    updateTotalPrice();
+                    saveItemsToJson();
+
+                }
+            }
+
+        });
+
+        itemTouchHelper.attachToRecyclerView(itemContainer);
+    }
+
+    private void clearPubsJson() {
+        try {
+            // Write an empty array to the JSON file to clear all data
+            FileUtil.saveToFile(this, "pubs.json", "[]");
+            Log.d(TAG, "pubs.json has been cleared");
+        } catch (Exception e) {
+            Log.e(TAG, "Error clearing pubs.json", e);
+        }
     }
 
     private void loadItemsFromJson() {
         String json = FileUtil.readFromFile(this, "pubs.json");
         List<PubWithItems> pubList = JsonUtil.fromJson(json);
+
         for (PubWithItems pubWithItems : pubList) {
-            if (pubWithItems.getPub().getId() == pubId) {
+            if (pubWithItems.getPub().getName().equals(pub.getName())) {
                 pub = new Pub(pubWithItems.getPub().getName());
                 for (ItemEntity itemEntity : pubWithItems.getItems()) {
-                    itemList.add(new Item(itemEntity.getName(), itemEntity.getPrice(), itemEntity.getQuantity()));
+                    Item item = new Item(itemEntity.getName(), itemEntity.getPrice(), itemEntity.getQuantity());
+                    itemList.add(item);
                 }
+                itemAdapter.notifyDataSetChanged();
                 break;
             }
         }
-        itemAdapter.notifyDataSetChanged();
         updateTotalPrice();
     }
 
@@ -79,9 +129,6 @@ public class PubDetailActivity extends AppCompatActivity implements ItemAdapter.
             if (!itemName.isEmpty() && !itemPriceStr.isEmpty()) {
                 double itemPrice = Double.parseDouble(itemPriceStr);
                 addItemToPub(itemName, itemPrice);
-                itemList.add(new Item(itemName, itemPrice));
-                itemAdapter.notifyItemInserted(itemList.size() - 1);
-                updateTotalPrice();
             }
         });
         builder.setNegativeButton("Zrušit", (dialog, which) -> dialog.cancel());
@@ -90,19 +137,35 @@ public class PubDetailActivity extends AppCompatActivity implements ItemAdapter.
     }
 
     private void addItemToPub(String name, double price) {
-        Item newItem = new Item(name, price, 1);
+        Item newItem = new Item(name, price, 0);
         pub.addItem(newItem);
-        itemList.add(newItem); // Add to itemList
+        itemList.add(newItem);
+        itemAdapter.notifyItemInserted(itemList.size() - 1);
         saveItemsToJson();
-        itemAdapter.notifyItemInserted(itemList.size() - 1); // Notify adapter
-        updateTotalPrice(); // Update total price
+        updateTotalPrice();
+    }
+
+    private void clearItemList() {
+        itemList.clear();
+        itemAdapter.notifyDataSetChanged();
+        saveItemsToJson();
+        updateTotalPrice();
+    }
+
+    private void resetItemQuantities() {
+        for (Item item : itemList) {
+            item.setQuantity(0);
+        }
+        itemAdapter.notifyDataSetChanged();
+        saveItemsToJson();
+        updateTotalPrice();
     }
 
     private void saveItemsToJson() {
         String json = FileUtil.readFromFile(this, "pubs.json");
         List<PubWithItems> pubList = JsonUtil.fromJson(json);
         for (PubWithItems pubWithItems : pubList) {
-            if (pubWithItems.getPub().getId() == pubId) {
+            if (pubWithItems.getPub().getName().equals(pub.getName())) {
                 pubWithItems.getItems().clear();
                 for (Item item : itemList) {
                     ItemEntity itemEntity = new ItemEntity();
@@ -129,5 +192,6 @@ public class PubDetailActivity extends AppCompatActivity implements ItemAdapter.
     @Override
     public void onQuantityChange() {
         updateTotalPrice();
+        saveItemsToJson();
     }
 }

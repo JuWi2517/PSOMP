@@ -1,25 +1,25 @@
+// MainActivity.java
 package com.example.psomp;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.widget.EditText;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.FragmentManager;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements PubAdapter.OnPubClickListener {
+public class MainActivity extends AppCompatActivity {
 
-    private List<String> pubList;
+    private static final String TAG = "MainActivity";
+    private List<PubWithItems> pubList;
+    private RecyclerView pubContainer;
     private PubAdapter pubAdapter;
-    private RecyclerView pubRecyclerView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,34 +27,51 @@ public class MainActivity extends AppCompatActivity implements PubAdapter.OnPubC
         setContentView(R.layout.activity_main);
 
         pubList = new ArrayList<>();
+        pubContainer = findViewById(R.id.pubContainer);
+        pubContainer.setLayoutManager(new LinearLayoutManager(this));
+        pubAdapter = new PubAdapter(pubList, this::onPubClick);
+        pubContainer.setAdapter(pubAdapter);
 
-        // Initialize the adapter
-        pubAdapter = new PubAdapter(pubList, this);
-
-        // Initialize the RecyclerView
-        pubRecyclerView = findViewById(R.id.pubRecyclerView);
-        pubRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        pubRecyclerView.setAdapter(pubAdapter);
-
-        // Load pubs from the JSON file
-        loadPubsFromJson();
-
-        // Handle adding new pubs
         FloatingActionButton addPubButton = findViewById(R.id.addPubButton);
         addPubButton.setOnClickListener(v -> showAddPubDialog());
+
+        loadPubsFromJson();
+
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
+                0, ItemTouchHelper.RIGHT) {
+
+            @Override
+            public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+                if (direction == ItemTouchHelper.RIGHT) {
+                    int position = viewHolder.getAdapterPosition();
+                    pubList.remove(position);
+                    pubAdapter.notifyItemRemoved(position);
+                    savePubsToJson();
+                    Log.d(TAG, "Pub swiped right, deleted, and saved to JSON");
+                }
+            }
+        });
+
+        itemTouchHelper.attachToRecyclerView(pubContainer);
+
+        ;
     }
 
     private void loadPubsFromJson() {
         String json = FileUtil.readFromFile(this, "pubs.json");
-        List<PubWithItems> pubWithItemsList = new ArrayList<>();
+        Log.d(TAG, "loadPubsFromJson: "+ json);
+
         if (json != null && !json.isEmpty()) {
             List<PubWithItems> parsedList = JsonUtil.fromJson(json);
             if (parsedList != null) {
-                pubWithItemsList = parsedList;
+                pubList.clear();
+                pubList.addAll(parsedList);
             }
-        }
-        for (PubWithItems pubWithItems : pubWithItemsList) {
-            pubList.add(pubWithItems.getPub().getName());
         }
         pubAdapter.notifyDataSetChanged();
     }
@@ -69,47 +86,35 @@ public class MainActivity extends AppCompatActivity implements PubAdapter.OnPubC
         builder.setPositiveButton("OK", (dialog, which) -> {
             String pubName = input.getText().toString().trim();
             if (!pubName.isEmpty()) {
-                pubList.add(pubName);
-                pubAdapter.notifyItemInserted(pubList.size() - 1);
+                PubEntity newPub = new PubEntity();
+                newPub.setName(pubName);
+                newPub.setQuantity(0);
 
-                // Save the pub to the JSON file
-                addPubToJson(pubName);
+                PubWithItems newPubWithItems = new PubWithItems();
+                newPubWithItems.setPub(newPub);
+                newPubWithItems.setItems(new ArrayList<>());
+
+                pubList.add(newPubWithItems);
+                pubAdapter.notifyItemInserted(pubList.size() - 1);
+                savePubsToJson();
             }
         });
-        builder.setNegativeButton("Zrušit", (dialog, which) -> dialog.cancel());
 
+        builder.setNegativeButton("Zrušit", (dialog, which) -> dialog.cancel());
         builder.show();
     }
 
-    private void addPubToJson(String pubName) {
-        String json = FileUtil.readFromFile(this, "pubs.json");
-        List<PubWithItems> pubWithItemsList = new ArrayList<>();
-        if (json != null && !json.isEmpty()) {
-            List<PubWithItems> parsedList = JsonUtil.fromJson(json);
-            if (parsedList != null) {
-                pubWithItemsList = parsedList;
-            }
-        }
-
-        PubEntity newPub = new PubEntity();
-        newPub.setId(pubWithItemsList.size() + 1); // Assign a new ID
-        newPub.setName(pubName);
-
-        PubWithItems newPubWithItems = new PubWithItems();
-        newPubWithItems.setPub(newPub);
-        newPubWithItems.setItems(new ArrayList<>());
-
-        pubWithItemsList.add(newPubWithItems);
-
-        String updatedJson = JsonUtil.toJson(pubWithItemsList);
+    private void savePubsToJson() {
+        String updatedJson = JsonUtil.toJson(pubList);
+        Log.d(TAG, "savePubsToJson: "+ updatedJson);
         FileUtil.saveToFile(this, "pubs.json", updatedJson);
     }
 
-    @Override
-    public void onPubClick(int position) {
+
+
+    private void onPubClick(String pubName) {
         Intent intent = new Intent(this, PubDetailActivity.class);
-        intent.putExtra("PUB_ID", position + 1); // Pass the pub ID
-        intent.putExtra("PUB_NAME", pubList.get(position));
+        intent.putExtra("PUB_NAME", pubName);
         startActivity(intent);
     }
 }
